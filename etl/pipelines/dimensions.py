@@ -1,13 +1,15 @@
-from database import mensajeria, warehouse
-from extract import extract_tables
-from load import load_table
+from etl.database import mensajeria, warehouse
 
-from transform.transform_dim_cliente import transform_dim_cliente
-from transform.transform_dim_mensajero import transform_dim_mensajero
-from transform.transform_dim_fecha import transform_dim_fechahora
+from etl.extract import extract_tables
+from etl.load import load_table
+
+from etl.transform.transform_dim_cliente import transform_dim_cliente
+from etl.transform.transform_dim_mensajero import transform_dim_mensajero
+from etl.transform.transform_dim_fecha import transform_dim_fechahora
 
 
-PIPELINE = [
+
+PIPELINES = [
     {
         "tables": [
             "cliente",
@@ -24,7 +26,7 @@ PIPELINE = [
             "mensajeria_servicio",
         ],
         "transform": transform_dim_fechahora,
-        "destination": "dim_fecha_hora",
+        "destination": "dim_fechahora",
     },
     {
         "tables": [
@@ -38,20 +40,18 @@ PIPELINE = [
 
 
 def run():
-    for job in PIPELINE:
+
+    for pipeline in PIPELINES:
+
         data = extract_tables(
             mensajeria,
-            *job["tables"]      # Desempaqueta la lista como argumentos
+            *pipeline["tables"],
         )
 
-        df = job["transform"](data)
+        dataframe = pipeline["transform"](data)
 
         load_table(
-            df,
-            job["destination"],
+            dataframe,
+            pipeline["destination"],
             warehouse,
         )
-
-
-if __name__ == "__main__":
-    run()

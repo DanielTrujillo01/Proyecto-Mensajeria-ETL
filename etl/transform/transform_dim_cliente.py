@@ -1,3 +1,5 @@
+import pandas as pd
+
 def transform_dim_cliente(data):
     """
     Construye la dimensión Cliente a partir de las tablas extraídas.
@@ -69,4 +71,23 @@ def transform_dim_cliente(data):
     dim_cliente["sector"] = dim_cliente["sector"].fillna("No especificado")
     dim_cliente["ciudad_principal"] = dim_cliente["ciudad_principal"].fillna("Sin ciudad")
 
+    fila_desconocido = pd.DataFrame(
+    [
+        {
+            "cliente_key": -1,
+            "cliente_id": -1,
+            "nit_cliente": None,
+            "nombre_cliente": "Cliente desconocido",
+            "sector": "No aplica",
+            "tipo_cliente": "No aplica",
+            "ciudad_principal": "No aplica",
+            "estado_activo": False,
+        }
+    ]
+    )
+
+    dim_cliente = pd.concat(
+        [fila_desconocido, dim_cliente],
+        ignore_index=True,
+    )
     return dim_cliente

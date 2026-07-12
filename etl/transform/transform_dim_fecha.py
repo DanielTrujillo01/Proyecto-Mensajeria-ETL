@@ -130,4 +130,24 @@ def transform_dim_fechahora(data):
     dim_fechahora["minuto"] = dim_fechahora["fecha_hora"].dt.minute
     dim_fechahora["dia_de_la_semana"] = dim_fechahora["fecha_hora"].dt.day_name()
 
+    fila_desconocido = pd.DataFrame(
+    [
+        {
+            "fecha_hora_key": -1,
+            "fecha_hora": pd.NaT,
+            "año": None,
+            "mes": None,
+            "dia": None,
+            "hora": None,
+            "minuto": None,
+            "dia_de_la_semana": "No aplica",
+        }
+    ]
+    )
+
+    dim_fechahora = pd.concat(
+        [fila_desconocido, dim_fechahora],
+        ignore_index=True,
+    )
+    
     return dim_fechahora

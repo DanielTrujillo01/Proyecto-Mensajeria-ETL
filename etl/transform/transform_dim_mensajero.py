@@ -1,3 +1,5 @@
+import pandas as pd
+
 def transform_dim_mensajero(data):
     """
     Construye la dimensión Mensajero.
@@ -65,4 +67,18 @@ def transform_dim_mensajero(data):
         .fillna("Sin nombre")
     )
 
+    fila_desconocido = pd.DataFrame(
+    [
+        {
+            "mensajero_key": -1,
+            "mensajero_id": -1,
+            "nombre_completo": "Sin mensajero",
+        }
+    ]
+    )
+
+    dim_mensajero = pd.concat(
+        [fila_desconocido, dim_mensajero],
+        ignore_index=True,
+    )
     return dim_mensajero
