@@ -95,6 +95,10 @@ def transform_fact_servicio(data):
         )
     )
 
+    fact_servicio = agregar_medidas_tiempo(
+        fact_servicio
+    )
+
     fact_servicio = agregar_fk_fecha(
     fact_servicio,
     dim_fechahora,

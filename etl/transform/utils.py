@@ -1,5 +1,37 @@
 import pandas as pd
 
+def agregar_medidas_tiempo(fact_servicio):
+    """
+    Calcula las medidas de tiempo entre las distintas fases del servicio.
+    """
+
+    fact_servicio["duracion_iniciado_asignado_min"] = (
+        fact_servicio["asignado"]
+        - fact_servicio["iniciado"]
+    ).dt.total_seconds() / 60
+
+    fact_servicio["duracion_asignado_recogido_min"] = (
+        fact_servicio["recogido"]
+        - fact_servicio["asignado"]
+    ).dt.total_seconds() / 60
+
+    fact_servicio["duracion_recogido_entregado_min"] = (
+        fact_servicio["entregado"]
+        - fact_servicio["recogido"]
+    ).dt.total_seconds() / 60
+
+    fact_servicio["duracion_entregado_cerrado_min"] = (
+        fact_servicio["cerrado"]
+        - fact_servicio["entregado"]
+    ).dt.total_seconds() / 60
+
+    fact_servicio["duracion_total_min"] = (
+        fact_servicio["cerrado"]
+        - fact_servicio["iniciado"]
+    ).dt.total_seconds() / 60
+
+    return fact_servicio
+
 def agregar_fk_fecha(fact_servicio, dim_fechahora):
 
     dim_fechahora = dim_fechahora.copy()
