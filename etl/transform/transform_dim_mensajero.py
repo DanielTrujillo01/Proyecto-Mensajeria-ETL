@@ -2,7 +2,7 @@ import pandas as pd
 
 def transform_dim_mensajero(data):
     """
-    Construye la dimensión Mensajero.
+    Construye la dimensión Mensajero a partir de las tablas extraídas.
 
     Parameters
     ----------
@@ -15,70 +15,52 @@ def transform_dim_mensajero(data):
         Dimensión Mensajero lista para cargar.
     """
 
-    mensajero = data["clientes_mensajeroaquitoy"].copy()
-    auth_user = data["auth_user"].copy()
+    # 1. Extraer los dataframes del diccionario
+    mensajeroAquiToy = data["clientes_mensajeroaquitoy"]
+    auth_user = data["auth_user"][["id", "username"]]
 
-    # Seleccionar únicamente las columnas necesarias
-    auth_user = auth_user[["id", "username"]]
-
-    # Unir con la tabla de usuarios
-    dim_mensajero = (
-        mensajero
-        .merge(
-            auth_user,
-            left_on="user_id",
-            right_on="id",
-            how="left",
-        )
-        .rename(
-            columns={
-                "id_x": "mensajero_id",
-                "username": "nombre_completo",
-            }
-        )
+    # 2. Merge para traer el nombre de usuario (username) del mensajero
+    dim_mensajero = mensajeroAquiToy.merge(
+        auth_user,
+        left_on="user_id",
+        right_on="id",
+        how="left"
     )
 
-    # Seleccionar columnas finales
-    dim_mensajero = dim_mensajero[
-        [
-            "mensajero_id",
-            "nombre_completo",
-        ]
-    ]
+    # 3. Renombrar columnas para el warehouse y seleccionar las necesarias
+    dim_mensajero = dim_mensajero.rename(columns={
+        "id_x": "mensajero_id", 
+        "username": "nombre_completo"
+    })
+    
+    dim_mensajero = dim_mensajero[["mensajero_id", "nombre_completo"]]
 
-    # Eliminar duplicados
+    # 4. Eliminar duplicados, ordenar y resetear índice
     dim_mensajero = (
         dim_mensajero
-        .drop_duplicates(subset="mensajero_id")
+        .drop_duplicates(subset=["mensajero_id"])
         .sort_values("mensajero_id")
         .reset_index(drop=True)
     )
 
-    # Llave sustituta
-    dim_mensajero.insert(
-        0,
-        "mensajero_key",
-        dim_mensajero.index + 1,
-    )
+    # 5. Crear llave sustituta (Surrogate Key)
+    dim_mensajero["mensajero_key"] = dim_mensajero.index + 1
 
-    # Tratamiento de nulos
-    dim_mensajero["nombre_completo"] = (
-        dim_mensajero["nombre_completo"]
-        .fillna("Sin nombre")
-    )
+    # 6. Manejo de nulos
+    dim_mensajero["nombre_completo"] = dim_mensajero["nombre_completo"].fillna("Sin nombre")
 
-    fila_desconocido = pd.DataFrame(
-    [
+    # 7. Reordenar dejando la llave de primera
+    dim_mensajero = dim_mensajero[["mensajero_key", "mensajero_id", "nombre_completo"]]
+
+    # 8. Agregar fila por defecto (Manejo de integridad referencial)
+    fila_no_aplica = pd.DataFrame([
         {
-            "mensajero_key": -1,
-            "mensajero_id": -1,
-            "nombre_completo": "Sin mensajero",
+            "mensajero_key": -1, 
+            "mensajero_id": -1, 
+            "nombre_completo": "No aplica"
         }
-    ]
-    )
+    ])
 
-    dim_mensajero = pd.concat(
-        [fila_desconocido, dim_mensajero],
-        ignore_index=True,
-    )
+    dim_mensajero = pd.concat([fila_no_aplica, dim_mensajero], ignore_index=True)
+
     return dim_mensajero

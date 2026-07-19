@@ -15,79 +15,80 @@ def transform_dim_cliente(data):
         Dimensión Cliente lista para cargar.
     """
 
+    # 1. Extraer los dataframes del diccionario
     cliente = data["cliente"]
     tipo_cliente = data["tipo_cliente"][["tipo_cliente_id", "nombre"]]
     ciudad = data["ciudad"][["ciudad_id", "nombre"]]
 
-    # Cliente + Tipo de Cliente
+    # 2. Primer merge: Cliente + Tipo de Cliente
     dim_cliente = (
         cliente
         .merge(tipo_cliente, on="tipo_cliente_id", how="left")
-        .rename(
-            columns={
-                "nombre_x": "nombre_cliente",
-                "nombre_y": "tipo_cliente",
-            }
-        )
+        .rename(columns={
+            "nombre_x": "nombre_cliente", 
+            "nombre_y": "tipo_cliente"
+        })
     )
 
-    # Cliente + Ciudad
+    # 3. Segundo merge: Cliente + Ciudad
     dim_cliente = (
         dim_cliente
         .merge(ciudad, on="ciudad_id", how="left")
-        .rename(
-            columns={
-                "nombre": "ciudad_principal",
-                "activo": "estado_activo",
-            }
-        )
+        .rename(columns={
+            "nombre": "ciudad_principal", 
+            "activo": "estado_activo"
+        })
     )
 
-    # Seleccionar columnas
-    dim_cliente = dim_cliente[
-        [
-            "cliente_id",
-            "nit_cliente",
-            "nombre_cliente",
-            "sector",
-            "tipo_cliente",
-            "ciudad_principal",
-            "estado_activo",
-        ]
+    # 4. Seleccionar columnas deseadas
+    columnas_deseadas = [
+        "cliente_id", "nit_cliente", "nombre_cliente", 
+        "sector", "tipo_cliente", "ciudad_principal", "estado_activo"
     ]
+    dim_cliente = dim_cliente[columnas_deseadas]
 
-    # Eliminar duplicados
+    # 5. Eliminar duplicados y ordenar
     dim_cliente = (
         dim_cliente
-        .drop_duplicates(subset="cliente_id")
+        .drop_duplicates(subset=["cliente_id"])
         .sort_values("cliente_id")
         .reset_index(drop=True)
     )
 
-    # Llave sustituta
-    dim_cliente.insert(0, "cliente_key", dim_cliente.index + 1)
+    # 6. Crear llave sustituta (Surrogate Key)
+    dim_cliente["cliente_key"] = dim_cliente.index + 1
 
-    # Tratamiento de nulos
-    dim_cliente["sector"] = dim_cliente["sector"].fillna("No especificado")
-    dim_cliente["ciudad_principal"] = dim_cliente["ciudad_principal"].fillna("Sin ciudad")
+    # 7. Reordenar dejando la llave sustituta de primera
+    dim_cliente = dim_cliente[[
+        "cliente_key", "cliente_id", "nit_cliente", "nombre_cliente", 
+        "sector", "tipo_cliente", "ciudad_principal", "estado_activo"
+    ]]
 
-    fila_desconocido = pd.DataFrame(
-    [
+    # 8. Eliminar las columnas que ya no van para el warehouse
+    dim_cliente.drop(
+        columns=[
+            "nit_cliente",
+            "sector",
+            "tipo_cliente",
+            "ciudad_principal",
+            "estado_activo",
+        ], 
+        inplace=True
+    )
+
+    # 9. Fila de cliente desconocido (Manejo de integridad referencial)
+    # Adaptada para tener solo las columnas finales que dejaste en el dataframe
+    fila_desconocido = pd.DataFrame([
         {
             "cliente_key": -1,
             "cliente_id": -1,
-            "nit_cliente": None,
             "nombre_cliente": "Cliente desconocido",
-            "sector": "No aplica",
-            "tipo_cliente": "No aplica",
-            "ciudad_principal": "No aplica",
-            "estado_activo": False,
         }
-    ]
-    )
+    ])
 
     dim_cliente = pd.concat(
         [fila_desconocido, dim_cliente],
         ignore_index=True,
     )
+    
     return dim_cliente
