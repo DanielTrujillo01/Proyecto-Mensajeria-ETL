@@ -24,9 +24,6 @@ def transform_hecho_novedad(data, dim_fechahora, dim_novedad, dim_mensajero):
 
     novedad = data["mensajeria_novedadesservicio"].copy()
 
-    # Filtrar registros de prueba
-    novedad = novedad[novedad["es_prueba"] == False]
-
     # Quitar zona horaria para que coincida con dim_fechahora
     novedad["fecha_novedad"] = novedad["fecha_novedad"].dt.tz_localize(None)
 
