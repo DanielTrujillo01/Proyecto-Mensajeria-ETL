@@ -55,6 +55,9 @@ def run():
     """
     Ejecuta el pipeline de extracción, transformación y carga para todas las dimensiones.
     """
+    # Caché para almacenar las dimensiones ya procesadas en memoria
+    dw_cache = {}
+
     for pipeline in PIPELINES:
         # 1. Extraer los datos del OLTP
         data = extract_tables(
@@ -62,10 +65,16 @@ def run():
             *pipeline["tables"],
         )
 
-        # 2. Transformar los datos
+        # 2. Inyectar las dimensiones previamente creadas (Ej: dim_cliente para dim_sede)
+        data.update(dw_cache)
+
+        # 3. Transformar los datos
         dataframe = pipeline["transform"](data)
 
-        # 3. Cargar los datos en la bodega
+        # Guardar el resultado en el caché por si la siguiente dimensión lo necesita
+        dw_cache[pipeline["destination"]] = dataframe
+
+        # 4. Cargar los datos en la bodega
         load_table(
             dataframe,
             pipeline["destination"],
