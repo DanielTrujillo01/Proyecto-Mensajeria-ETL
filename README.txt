@@ -3,10 +3,12 @@ PARA PROBAR QUE FUNCIONE
 primero en la bodega de datos ejecutar el este script:
 
 DROP TABLE IF EXISTS fact_servicio CASCADE;
+DROP TABLE IF EXISTS fact_novedad CASCADE;
 DROP TABLE IF EXISTS dim_sede CASCADE;
 DROP TABLE IF EXISTS dim_mensajero CASCADE;
 DROP TABLE IF EXISTS dim_cliente CASCADE;
 DROP TABLE IF EXISTS dim_fechahora CASCADE;
+DROP TABLE IF EXISTS dim_novedad CASCADE;
 
 CREATE TABLE dim_mensajero (
 	mensajero_key BIGINT NOT NULL,
@@ -57,6 +59,11 @@ CREATE TABLE dim_sede (
 
 CREATE TABLE fact_servicio (
 	servicio_id BIGINT NOT NULL,
+	duracion_iniciado_asignado_min  DOUBLE PRECISION,
+    duracion_asignado_recogido_min  DOUBLE PRECISION,
+    duracion_recogido_entregado_min DOUBLE PRECISION,
+    duracion_entregado_cerrado_min  DOUBLE PRECISION,
+    duracion_total_min              DOUBLE PRECISION,
 	fk_fecha_iniciado BIGINT NOT NULL,
 	fk_fecha_asignado BIGINT,
 	fk_fecha_recogido BIGINT,
@@ -75,5 +82,20 @@ CREATE TABLE fact_servicio (
 	FOREIGN KEY (fk_cliente) REFERENCES dim_cliente(cliente_key),
 	FOREIGN KEY (fk_mensajero) REFERENCES dim_mensajero(mensajero_key),
 	FOREIGN KEY (fk_sede) REFERENCES dim_sede(sede_key)
-)
+);
 
+CREATE TABLE dim_novedad (
+    novedad_key     BIGINT PRIMARY KEY,
+    tipo_novedad_id BIGINT,
+    nombre_novedad  TEXT
+);
+
+CREATE TABLE fact_novedad (
+    novedad_id      BIGINT PRIMARY KEY,
+    servicio_id     BIGINT,
+    fk_fecha        BIGINT,
+    fk_tipo_novedad BIGINT,
+    fk_mensajero    BIGINT,
+    descripcion     TEXT,
+    cantidad        BIGINT
+);

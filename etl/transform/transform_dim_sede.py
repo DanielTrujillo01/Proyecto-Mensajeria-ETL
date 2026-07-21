@@ -50,12 +50,12 @@ def transform_dim_sede(data):
     )
 
     # 6. Crear llave sustituta 
-    dim_sede.insert(0, "key_dim_sede", dim_sede.index + 1)
+    dim_sede.insert(0, "sede_key", dim_sede.index + 1)
 
     # 7. Agregar fila "No aplica"
     fila_no_aplica = pd.DataFrame([
         {
-            "key_dim_sede": -1,
+            "sede_key": -1,
             "sede_id": -1,
             "nombre": "No aplica - dirección puntual",
             "fk_cliente": -1,
@@ -65,6 +65,6 @@ def transform_dim_sede(data):
     dim_sede = pd.concat([fila_no_aplica, dim_sede], ignore_index=True)
 
     # 8. Ordenar columnas finales (opcional pero buena práctica)
-    dim_sede = dim_sede[["key_dim_sede", "sede_id", "nombre", "fk_cliente"]]
+    dim_sede = dim_sede[["sede_key", "sede_id", "nombre", "fk_cliente"]]
 
     return dim_sede
