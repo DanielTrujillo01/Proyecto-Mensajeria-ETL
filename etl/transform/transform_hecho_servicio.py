@@ -39,12 +39,14 @@ def transform_fact_servicio(data):
     # Construcción del timestamp de cada cambio de estado
     # ==================================================
 
+    # Se usa .dt.date en vez de .astype(str) directo sobre 'fecha': si esa
+    # columna ya trae un componente de hora (p. ej. medianoche), concatenar
+    # el string completo con 'hora' y cortar a 19 caracteres puede producir
+    # una fecha mal formada que pd.to_datetime no interpreta bien.
     estados_servicio["fecha_hora"] = pd.to_datetime(
-        (
-            estados_servicio["fecha"].astype(str)
-            + " "
-            + estados_servicio["hora"].astype(str)
-        ).str[:19],
+        estados_servicio["fecha"].dt.date.astype(str)
+        + " "
+        + estados_servicio["hora"].astype(str),
         errors="coerce",
     )
 
@@ -96,13 +98,38 @@ def transform_fact_servicio(data):
         )
     )
 
+    # Si en este lote ningún servicio llegó a algún hito (columna ausente
+    # del todo tras el pivot), se crea vacía para que el resto del pipeline
+    # no falle por un KeyError.
+    for hito in mapa_estados.values():
+        if hito not in fact_servicio.columns:
+            fact_servicio[hito] = pd.NaT
+
     fact_servicio = agregar_medidas_tiempo(
         fact_servicio
     )
 
+    # Copia de las fechas reales por hito ANTES de que agregar_fk_fecha las
+    # reemplace/elimine, para poder validar integridad después. No participa
+    # en la carga final.
+    fechas_originales = fact_servicio[
+        ["servicio_id"] + list(mapa_estados.values())
+    ].copy()
+
     fact_servicio = agregar_fk_fecha(
         fact_servicio,
         dim_fechahora,
+    )
+
+    # Verifica que cada fk_fecha_{hito} apunte, en dim_fechahora, al mismo
+    # timestamp real calculado arriba para ese hito. Detectaría, por
+    # ejemplo, un mapa_estados mal armado (un estado apuntando al fk de
+    # otro) antes de que llegue a cargarse a la bodega.
+    validar_fk_fecha(
+        fact_servicio,
+        fechas_originales,
+        dim_fechahora,
+        obtener_key_fecha_desconocida(dim_fechahora),
     )
 
     fact_servicio = agregar_fk_cliente(

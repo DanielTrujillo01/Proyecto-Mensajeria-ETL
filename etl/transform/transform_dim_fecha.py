@@ -1,5 +1,6 @@
 import pandas as pd
 
+
 def transform_dim_fechahora(data):
     """
     Construye la dimensión Fecha/Hora extrayendo todos los timestamps
@@ -15,11 +16,11 @@ def transform_dim_fechahora(data):
     pandas.DataFrame
         Dimensión Fecha/Hora lista para cargar.
     """
-    
+
     # 1. Obtener los dataframes de fechas (usamos .get por si falta alguna tabla en la config)
     estados_servicio = data.get("mensajeria_estadosservicio")
     novedades = data.get("mensajeria_novedadesservicio")
-    
+
     if estados_servicio is None:
         raise ValueError("Falta la tabla 'mensajeria_estadosservicio' en los datos extraídos.")
 
@@ -39,7 +40,7 @@ def transform_dim_fechahora(data):
 
     # 4. Unir ambos universos de fechas y dejar solo los valores únicos
     dim_fechahora = pd.concat([fechas_estados, fechas_nov], ignore_index=True)
-    
+
     dim_fechahora = (
         dim_fechahora
         .drop_duplicates()
@@ -47,27 +48,34 @@ def transform_dim_fechahora(data):
         .reset_index(drop=True)
     )
 
-    # 5. Generar los atributos de la dimensión de tiempo
-    dim_fechahora["año"] = dim_fechahora["fecha_hora"].dt.year
-    dim_fechahora["mes"] = dim_fechahora["fecha_hora"].dt.month
-    dim_fechahora["dia"] = dim_fechahora["fecha_hora"].dt.day
-    dim_fechahora["hora"] = dim_fechahora["fecha_hora"].dt.hour
-    dim_fechahora["minuto"] = dim_fechahora["fecha_hora"].dt.minute
+    # 5. Generar los atributos de la dimensión de tiempo.
+    #    Se castean explícitamente a float porque el DDL de dim_fechahora
+    #    define año/mes/dia/hora/minuto como FLOAT, no INTEGER. dt.year/
+    #    month/day/hour/minute devuelven int64 por defecto; sin este cast
+    #    quedaría un mismatch de tipo entre el DataFrame y la tabla destino.
+    dim_fechahora["año"] = dim_fechahora["fecha_hora"].dt.year.astype(float)
+    dim_fechahora["mes"] = dim_fechahora["fecha_hora"].dt.month.astype(float)
+    dim_fechahora["dia"] = dim_fechahora["fecha_hora"].dt.day.astype(float)
+    dim_fechahora["hora"] = dim_fechahora["fecha_hora"].dt.hour.astype(float)
+    dim_fechahora["minuto"] = dim_fechahora["fecha_hora"].dt.minute.astype(float)
     dim_fechahora["dia_de_la_semana"] = dim_fechahora["fecha_hora"].dt.day_name()
 
     # 6. Crear la llave sustituta (Surrogate Key)
     dim_fechahora.insert(0, "fecha_hora_key", dim_fechahora.index + 1)
 
-    # 7. Agregar fila para fechas desconocidas (Manejo de integridad referencial)
+    # 7. Agregar fila para fechas desconocidas (Manejo de integridad referencial).
+    #    Útil cuando el hecho invalida un fk_fecha_* (por outlier o negativo,
+    #    ver limpiar_metricas_tiempo en el transform del hecho) y necesita
+    #    apuntar a algo distinto de NULL sin romper el join con la dimensión.
     fila_desconocido = pd.DataFrame([
         {
             "fecha_hora_key": -1,
             "fecha_hora": pd.NaT,
-            "año": -1,
-            "mes": -1,
-            "dia": -1,
-            "hora": -1,
-            "minuto": -1,
+            "año": -1.0,
+            "mes": -1.0,
+            "dia": -1.0,
+            "hora": -1.0,
+            "minuto": -1.0,
             "dia_de_la_semana": "Desconocido"
         }
     ])
